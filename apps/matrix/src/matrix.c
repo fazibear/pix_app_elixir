@@ -125,6 +125,8 @@ uint8_t matrix[LINES][PER_LINE] = {
     },
 };
 
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
 void set_line(uint8_t row)
 {
     SET_GPIO(A1, !(row & 0b00000001));
@@ -146,45 +148,42 @@ void gpio_init(void)
 
 void set_dot(int x, int y, int r, int g, int b)
 {
-    uint8_t l,p,t;
-
     if(y % 2) {
         x = (x + 16);
     }
     y = (y / 2) - ((y / 2) % 1);
+    uint8_t p = 7 - x % 8;
 
-    l = x / 8;
-    p = 7 - x % 8;
-    t = matrix[y][l];
-
-    //printf("line:%i, l:%i, p:%i, t:%i\n", y,l,p,t);
+    uint8_t lg = x / 8;
+    uint8_t tg = matrix[y][lg];
 
     if(g) {
-        t |= 1 << p;
+        tg |= 1 << p;
     } else {
-        t &= ~(1 << p);
+        tg &= ~(1 << p);
     }
-    matrix[y][l] = t;
 
-    l = x / 8 + 4;
-    p = 7 - x % 8;
-    t = matrix[y][l];
+    uint8_t lb = x / 8 + 4;
+    uint8_t tb = matrix[y][lb];
     if(b) {
-        t |= 1 << p;
+        tb |= 1 << p;
     } else {
-        t &= ~(1 << p);
+        tb &= ~(1 << p);
     }
-    matrix[y][l] = t;
 
-    l = x / 8 + 8;
-    p = 7 - x % 8;
-    t = matrix[y][l];
+    uint8_t lr = x / 8 + 8;
+    uint8_t tr = matrix[y][lr];
     if(r) {
-        t |= 1 << p;
+        tr |= 1 << p;
     } else {
-        t &= ~(1 << p);
+        tr &= ~(1 << p);
     }
-    matrix[y][l] = t;
+
+    pthread_mutex_lock(&mutex);
+    matrix[y][lg] = tg;
+    matrix[y][lb] = tb;
+    matrix[y][lr] = tr;
+    pthread_mutex_unlock(&mutex);
 }
 
 
@@ -195,6 +194,7 @@ void draw()
     while(1) {
         for(line = 0; line < LINES; line++) {
             set_line(line);
+            pthread_mutex_lock(&mutex);
             for(pos = 0; pos < PER_LINE; pos++) {
                 for (bit = 0; bit < 8; bit++)  {
                     SET_GPIO(SDI, !!(matrix[line][pos] & (1 << (7 - bit))));
@@ -202,6 +202,7 @@ void draw()
                     SET_GPIO(CLK, 0);
                 }
             }
+            pthread_mutex_unlock(&mutex);
             SET_GPIO(LE, 1);
             SET_GPIO(LE, 0);
             SET_GPIO(OE, 0);
