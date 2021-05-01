@@ -60,15 +60,18 @@ defmodule Covid do
 
   def handle_info(:fetch, state) do
     Process.send_after(self(), :fetch, @fetch_timeout)
+    case get("https://coronavirus-19-api.herokuapp.com/countries/poland") do
+      {:ok, response} ->
+        cases = response
+        |> Map.get(:body)
+        |> Jason.decode!()
+        |> Map.get("todayCases")
 
-    cases =
-      "https://coronavirus-19-api.herokuapp.com/countries/poland"
-      |> get!()
-      |> Map.get(:body)
-      |> Jason.decode!()
-      |> Map.get("todayCases")
+        {:noreply, Map.put(state, :text, "#{cases} * ")}
+      _ ->
+        {:noreply, state}
+    end
 
-    {:noreply, Map.put(state, :text, "#{cases} * ")}
   end
 
   defp tick(state) do
