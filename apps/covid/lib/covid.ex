@@ -74,7 +74,6 @@ defmodule Covid do
       _ ->
         {:noreply, state}
     end
-
   end
 
   defp tick(state) do
