@@ -60,6 +60,7 @@ defmodule Covid do
 
   def handle_info(:fetch, state) do
     Process.send_after(self(), :fetch, @fetch_timeout)
+
     case get("https://coronavirus-19-api.herokuapp.com/countries/poland") do
       {:ok, response} ->
         cases = response
@@ -71,7 +72,6 @@ defmodule Covid do
       _ ->
         {:noreply, state}
     end
-
   end
 
   defp tick(state) do
